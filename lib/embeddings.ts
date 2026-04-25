@@ -1,47 +1,33 @@
-const HF_API_URL = 'https://api-inference.huggingface.co/pipeline/feature-extraction';
+import { InferenceClient } from '@huggingface/inference';
+
+// Create a singleton client or instantiate inside the functions if environment variables are checked at runtime.
+function getClient() {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) {
+    throw new Error('Missing HUGGINGFACE_API_KEY environment variable.');
+  }
+  return new InferenceClient(apiKey);
+}
+
+const getModel = () => process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
 
 /**
  * Embed a single text string using Hugging Face Inference API.
  * Returns a float array (vector) of the configured embedding dimension.
  */
 export async function embedText(text: string): Promise<number[]> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  const model = process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
-
-  if (!apiKey) {
-    throw new Error('Missing HUGGINGFACE_API_KEY environment variable.');
-  }
-
-  const response = await fetch(`${HF_API_URL}/${model}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: text,
-      options: {
-        wait_for_model: true,
-      },
-    }),
+  const client = getClient();
+  const result = await client.featureExtraction({
+    model: getModel(),
+    inputs: text,
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `HF Embedding API error (${response.status}): ${errorText}`
-    );
-  }
-
-  const result = await response.json();
-
-  // The API returns a nested array for single input: [[0.1, 0.2, ...]]
-  // or a flat array [0.1, 0.2, ...] depending on the model
+  
+  // The SDK might return an array of arrays or flat array depending on the result shape
   if (Array.isArray(result) && Array.isArray(result[0])) {
-    return result[0];
+    return result[0] as number[];
   }
-
-  return result;
+  
+  return result as number[];
 }
 
 /**
@@ -49,33 +35,11 @@ export async function embedText(text: string): Promise<number[]> {
  * More efficient than calling embedText() individually.
  */
 export async function embedBatch(texts: string[]): Promise<number[][]> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  const model = process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
-
-  if (!apiKey) {
-    throw new Error('Missing HUGGINGFACE_API_KEY environment variable.');
-  }
-
-  const response = await fetch(`${HF_API_URL}/${model}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: texts,
-      options: {
-        wait_for_model: true,
-      },
-    }),
+  const client = getClient();
+  const result = await client.featureExtraction({
+    model: getModel(),
+    inputs: texts,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `HF Embedding API error (${response.status}): ${errorText}`
-    );
-  }
-
-  return await response.json();
+  return result as number[][];
 }

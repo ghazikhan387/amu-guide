@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // 1. Retrieve relevant document chunks
     let chunks;
     try {
-      chunks = await retrieveChunks(query, 5, 0.5);
+      chunks = await retrieveChunks(query, 5, 0.25);
     } catch (retrievalError) {
       console.error('[/api/chat] Retrieval error:', retrievalError);
       return NextResponse.json(

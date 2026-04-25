@@ -1,6 +1,5 @@
 import { Message } from '@/types';
-
-const HF_API_URL = 'https://api-inference.huggingface.co/models';
+import { InferenceClient } from '@huggingface/inference';
 
 const SYSTEM_PROMPT = `You are AMU Assistant, a helpful chatbot that answers questions about Aligarh Muslim University (AMU). Use ONLY the context provided below to answer the user's question. If the answer is not in the context, say "I don't have information about that. Please check the official AMU website at amu.ac.in."
 
@@ -9,108 +8,82 @@ Answer in clear, concise English. Do not make up information. Format your respon
 const FALLBACK_MESSAGE =
   "I don't have enough information to answer that question accurately. Please check the official AMU website at [amu.ac.in](https://www.amu.ac.in) for the most up-to-date details, or try rephrasing your question.";
 
+function getClient() {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) {
+    throw new Error('Missing HUGGINGFACE_API_KEY environment variable.');
+  }
+  return new InferenceClient(apiKey);
+}
+
+// Mistral is no longer free-tier supported for text-gen, we use a highly reliable supported model
+const getModel = () => process.env.HF_GENERATION_MODEL || 'Qwen/Qwen2.5-Coder-32B-Instruct';
+
 /**
- * Build the full prompt for the generation model.
- * Uses Mistral instruct format: [INST] ... [/INST]
+ * Build messages array for the chat completion API
  */
-function buildPrompt(
+function buildMessages(
   context: string,
   query: string,
   history: Pick<Message, 'role' | 'content'>[]
-): string {
-  let prompt = `<s>[INST] ${SYSTEM_PROMPT}\n\n`;
+) {
+  const messages: any[] = [
+    { role: 'system', content: SYSTEM_PROMPT }
+  ];
 
-  if (context) {
-    prompt += `Context:\n${context}\n\n`;
-  }
-
-  // Include recent conversation history (last 6 messages max)
+  // Add recent conversation history
   const recentHistory = history.slice(-6);
-  if (recentHistory.length > 0) {
-    prompt += 'Previous conversation:\n';
-    for (const msg of recentHistory) {
-      const role = msg.role === 'user' ? 'User' : 'Assistant';
-      prompt += `${role}: ${msg.content}\n`;
-    }
-    prompt += '\n';
+  for (const msg of recentHistory) {
+    messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
   }
 
-  prompt += `Current question: ${query} [/INST]`;
+  // Add the current query with context
+  let finalContent = `Current question: ${query}`;
+  if (context) {
+    finalContent = `Context:\n${context}\n\n${finalContent}`;
+  }
+  messages.push({ role: 'user', content: finalContent });
 
-  return prompt;
+  return messages;
 }
 
-/**
- * Generate an answer using the Hugging Face Inference API.
- * Returns the generated text as a string.
- */
 export async function generateAnswer(
   context: string,
   query: string,
   history: Pick<Message, 'role' | 'content'>[]
 ): Promise<string> {
-  // If no context was retrieved, return the fallback message
   if (!context || context.trim().length === 0) {
     return FALLBACK_MESSAGE;
   }
 
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  const model =
-    process.env.HF_GENERATION_MODEL || 'mistralai/Mistral-7B-Instruct-v0.2';
+  try {
+    const client = getClient();
+    const messages = buildMessages(context, query, history);
 
-  if (!apiKey) {
-    throw new Error('Missing HUGGINGFACE_API_KEY environment variable.');
-  }
+    const result = await client.chatCompletion({
+      model: getModel(),
+      messages,
+      max_tokens: 512,
+      temperature: 0.7,
+      top_p: 0.95,
+    });
 
-  const prompt = buildPrompt(context, query, history);
-
-  const response = await fetch(`${HF_API_URL}/${model}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 512,
-        temperature: 0.7,
-        top_p: 0.95,
-        repetition_penalty: 1.15,
-        return_full_text: false,
-      },
-      options: {
-        wait_for_model: true,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`HF Generation API error (${response.status}):`, errorText);
-    throw new Error(`Generation model unavailable (${response.status})`);
-  }
-
-  const result = await response.json();
-
-  // HF Inference API returns [{ generated_text: "..." }]
-  if (Array.isArray(result) && result.length > 0 && result[0].generated_text) {
-    return result[0].generated_text.trim();
+    if (result.choices && result.choices.length > 0 && result.choices[0].message?.content) {
+      return result.choices[0].message.content.trim();
+    }
+  } catch (error) {
+    console.error('HF Generation API error:', error);
+    throw new Error('Generation model unavailable');
   }
 
   return FALLBACK_MESSAGE;
 }
 
-/**
- * Generate a streaming answer using the Hugging Face Inference API.
- * Returns a ReadableStream of text tokens.
- */
 export async function generateAnswerStream(
   context: string,
   query: string,
   history: Pick<Message, 'role' | 'content'>[]
 ): Promise<ReadableStream<Uint8Array>> {
-  // If no context was retrieved, return a stream with the fallback message
   if (!context || context.trim().length === 0) {
     return new ReadableStream({
       start(controller) {
@@ -120,84 +93,29 @@ export async function generateAnswerStream(
     });
   }
 
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  const model =
-    process.env.HF_GENERATION_MODEL || 'mistralai/Mistral-7B-Instruct-v0.2';
-
-  if (!apiKey) {
-    throw new Error('Missing HUGGINGFACE_API_KEY environment variable.');
-  }
-
-  const prompt = buildPrompt(context, query, history);
-
-  const response = await fetch(`${HF_API_URL}/${model}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 512,
-        temperature: 0.7,
-        top_p: 0.95,
-        repetition_penalty: 1.15,
-        return_full_text: false,
-      },
-      stream: true,
-      options: {
-        wait_for_model: true,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`HF Generation API error (${response.status}):`, errorText);
-    throw new Error(`Generation model unavailable (${response.status})`);
-  }
-
-  const reader = response.body?.getReader();
-  const decoder = new TextDecoder();
+  const messages = buildMessages(context, query, history);
   const encoder = new TextEncoder();
 
   return new ReadableStream({
-    async pull(controller) {
-      if (!reader) {
-        controller.close();
-        return;
-      }
-
+    async start(controller) {
       try {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          controller.close();
-          return;
-        }
-
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split('\n').filter((line) => line.startsWith('data:'));
-
-        for (const line of lines) {
-          const jsonStr = line.slice(5).trim();
-          if (jsonStr === '[DONE]') {
-            controller.close();
-            return;
-          }
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const token = parsed.token?.text || '';
-            if (token) {
-              controller.enqueue(encoder.encode(token));
-            }
-          } catch {
-            // Skip malformed JSON lines
+        const client = getClient();
+        
+        for await (const chunk of client.chatCompletionStream({
+          model: getModel(),
+          messages,
+          max_tokens: 512,
+          temperature: 0.7,
+          top_p: 0.95,
+        })) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            controller.enqueue(encoder.encode(content));
           }
         }
+        controller.close();
       } catch (error) {
+        console.error('HF Generation stream error:', error);
         controller.error(error);
       }
     },

@@ -16,13 +16,15 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Create an index for fast approximate nearest neighbor search
+-- 3. Drop the old ivfflat index if it exists (it causes recall issues on small datasets with lists=100)
+DROP INDEX IF EXISTS documents_embedding_idx;
+
+-- 4. Create an HNSW index for fast approximate nearest neighbor search
 CREATE INDEX IF NOT EXISTS documents_embedding_idx
   ON documents
-  USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 100);
+  USING hnsw (embedding vector_cosine_ops);
 
--- 4. Create the match_documents RPC function for semantic search
+-- 5. Create the match_documents RPC function for semantic search
 CREATE OR REPLACE FUNCTION match_documents (
   query_embedding VECTOR(384),
   match_count     INT DEFAULT 5,
@@ -53,12 +55,14 @@ $$;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create a policy that allows reading documents for everyone (public chatbot)
+DROP POLICY IF EXISTS "Allow public read access on documents" ON documents;
 CREATE POLICY "Allow public read access on documents"
   ON documents
   FOR SELECT
   USING (true);
 
 -- 7. Create a policy for service role to manage documents (insert/update/delete)
+DROP POLICY IF EXISTS "Allow service role full access on documents" ON documents;
 CREATE POLICY "Allow service role full access on documents"
   ON documents
   FOR ALL

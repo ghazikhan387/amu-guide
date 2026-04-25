@@ -34,16 +34,13 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-// Dynamic imports after env is loaded
-const { createClient } = await import('@supabase/supabase-js');
-
 // ============================================
 // Configuration
 // ============================================
 const KNOWLEDGE_DIR = path.resolve(process.cwd(), 'data/knowledge');
 const CHUNK_SIZE = 512; // Target tokens per chunk (approximated by words)
 const CHUNK_OVERLAP = 50; // Overlap tokens between chunks
-const HF_API_URL = 'https://api-inference.huggingface.co/pipeline/feature-extraction';
+const HF_API_URL = 'https://router.huggingface.co/hf-inference/models';
 
 // ============================================
 // Helpers
@@ -107,36 +104,25 @@ function chunkText(text: string, chunkSize: number, overlap: number): string[] {
   return chunks;
 }
 
+import { InferenceClient } from '@huggingface/inference';
+
 /**
  * Embed text using Hugging Face API
  */
 async function embedText(text: string): Promise<number[]> {
   const apiKey = process.env.HUGGINGFACE_API_KEY;
-  const model = process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
-
   if (!apiKey) {
     throw new Error('Missing HUGGINGFACE_API_KEY');
   }
-
-  const response = await fetch(`${HF_API_URL}/${model}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: text,
-      options: { wait_for_model: true },
-    }),
+  const model = process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
+  const client = new InferenceClient(apiKey);
+  
+  const result = await client.featureExtraction({
+    model,
+    inputs: text,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HF API error (${response.status}): ${errorText}`);
-  }
-
-  const result = await response.json();
-  return Array.isArray(result[0]) ? result[0] : result;
+  return (Array.isArray(result) && Array.isArray(result[0]) ? result[0] : result) as number[];
 }
 
 /**
@@ -144,11 +130,23 @@ async function embedText(text: string): Promise<number[]> {
  */
 async function embedBatch(texts: string[], batchSize: number = 5): Promise<number[][]> {
   const embeddings: number[][] = [];
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) {
+    throw new Error('Missing HUGGINGFACE_API_KEY');
+  }
+  const model = process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2';
+  const client = new InferenceClient(apiKey);
 
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize);
-    const batchEmbeddings = await Promise.all(batch.map(embedText));
-    embeddings.push(...batchEmbeddings);
+    
+    // Pass the whole batch as array of strings
+    const batchEmbeddings = await client.featureExtraction({
+      model,
+      inputs: batch,
+    });
+    
+    embeddings.push(...(batchEmbeddings as number[][]));
 
     // Rate limiting: wait 500ms between batches
     if (i + batchSize < texts.length) {
@@ -166,6 +164,9 @@ async function embedBatch(texts: string[], batchSize: number = 5): Promise<numbe
 // Main Ingestion Logic
 // ============================================
 async function main() {
+  // Dynamic import (must be inside async function for CJS compatibility)
+  const { createClient } = await import('@supabase/supabase-js');
+
   console.log('🚀 AMU Assistant — Knowledge Base Ingestion');
   console.log('==========================================\n');
 
