@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AMU Guide — AI-Powered Student Assistant
 
-## Getting Started
+An intelligent, AI-powered assistant designed to help students navigate **Aligarh Muslim University (AMU)**. Built with a modern **RAG (Retrieval-Augmented Generation)** pipeline, it provides accurate information about admissions, fee structures, academic calendars, and campus life by retrieving relevant context from an optimized knowledge base.
 
-First, run the development server:
+![AMU Guide Interface](https://raw.githubusercontent.com/your-username/amu-guide/main/public/screenshot.png) *(Placeholder for your screenshot)*
 
+## 🚀 Key Features
+
+- **AI-Powered Chat:** Instant answers using state-of-the-art LLMs (Qwen 2.5).
+- **RAG Architecture:** Real-time retrieval from an optimized knowledge base stored in Supabase.
+- **Smart Retrieval:** Uses `pgvector` and HNSW indexing for high-speed, accurate semantic search.
+- **Optimized Knowledge Base:** Hand-curated Markdown files structured for maximum retrieval performance.
+- **Premium UI:** Sleek, modern interface built with Tailwind CSS and Next.js.
+
+## 🛠️ Tech Stack
+
+- **Frontend:** Next.js 15+, React 19, Tailwind CSS
+- **Backend:** Next.js API Routes
+- **Database:** Supabase (PostgreSQL with `pgvector`)
+- **AI Models:** 
+  - **Generation:** Qwen/Qwen2.5-Coder-32B-Instruct (via Hugging Face)
+  - **Embeddings:** all-MiniLM-L6-v2 (via Hugging Face)
+- **Deployment:** Vercel (recommended)
+
+## 📖 Setup & Installation
+
+### 1. Clone the Repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/your-username/amu-guide.git
+cd amu-guide
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Environment Setup
+Create a `.env.local` file based on `.env.example`:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+HUGGINGFACE_API_KEY=your_hf_api_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Database Setup
+Run the SQL migration found in `supabase/setup.sql` in your Supabase SQL Editor. This will:
+- Enable the `vector` extension.
+- Create the `documents` table.
+- Set up the HNSW index for high-performance search.
+- Configure Row Level Security (RLS).
 
-## Learn More
+### 5. Ingest Knowledge Base
+Run the ingestion script to process and embed the documents:
+```bash
+npx tsx scripts/ingest.ts
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 6. Run Locally
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📂 Knowledge Base Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The AI's intelligence is powered by curated Markdown files in `data/knowledge/`. We use a specialized **RAG-optimized format** including:
+- `[CHUNK: NAME]` headers for better contextual boundary detection.
+- Embedded metadata tags (e.g., `Topic: Admission`, `Level: UG`).
+- Structured tables for complex data like fee structures.
 
-## Deploy on Vercel
+## 🤝 Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
