@@ -1,26 +1,285 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ========================================
+   AMU Assistant — Design System
+   ======================================== */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* AMU Brand Colors */
+  --color-amu-50: #f0faf4;
+  --color-amu-100: #d6f0e0;
+  --color-amu-200: #a8e0bf;
+  --color-amu-300: #6ec898;
+  --color-amu-400: #38a96e;
+  --color-amu-500: #006633;
+  --color-amu-600: #005529;
+  --color-amu-700: #004420;
+  --color-amu-800: #003318;
+  --color-amu-900: #002210;
+
+  /* Neutral Palette */
+  --color-surface-50: #f8fafb;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-300: #cbd5e1;
+  --color-surface-400: #94a3b8;
+  --color-surface-500: #64748b;
+  --color-surface-600: #475569;
+  --color-surface-700: #334155;
+  --color-surface-800: #1e293b;
+  --color-surface-900: #0f172a;
+  --color-surface-950: #080d19;
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Base resets and global styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  background: var(--color-surface-50);
+  min-height: 100%;
+}
+
+.dark body {
+  background: var(--color-surface-950);
+}
+
+/* ========================================
+   Chat Message Animations
+   ======================================== */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 102, 51, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 102, 51, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-message-in {
+  animation: messageSlideIn 0.35s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-typing-bounce {
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* ========================================
+   Chat Bubble Styles
+   ======================================== */
+.chat-bubble-user {
+  background: linear-gradient(135deg, #006633, #00854a);
+  color: white;
+  border-radius: 20px 20px 4px 20px;
+  box-shadow: 0 2px 8px rgba(0, 102, 51, 0.2);
+}
+
+.chat-bubble-bot {
+  background: white;
+  color: #1e293b;
+  border-radius: 20px 20px 20px 4px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dark .chat-bubble-bot {
+  background: #1a1f2e;
+  color: #e2e8f0;
+  border-color: #2d3548;
+}
+
+/* ========================================
+   Suggestion Chip Styles
+   ======================================== */
+.suggestion-chip {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.suggestion-chip:hover {
+  border-color: #006633;
+  box-shadow: 0 4px 16px rgba(0, 102, 51, 0.12);
+  transform: translateY(-2px);
+}
+
+.dark .suggestion-chip {
+  background: #1a1f2e;
+  border-color: #2d3548;
+}
+
+.dark .suggestion-chip:hover {
+  border-color: #38a96e;
+  box-shadow: 0 4px 16px rgba(56, 169, 110, 0.15);
+}
+
+/* ========================================
+   Glassmorphism Navbar
+   ======================================== */
+.glass-navbar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 102, 51, 0.1);
+}
+
+.dark .glass-navbar {
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid rgba(56, 169, 110, 0.15);
+}
+
+/* ========================================
+   Input Bar
+   ======================================== */
+.chat-input-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid #e2e8f0;
+}
+
+.dark .chat-input-container {
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid #1e293b;
+}
+
+/* ========================================
+   Markdown Content Styling in Bot Messages
+   ======================================== */
+.bot-message-content p {
+  margin-bottom: 0.5em;
+}
+
+.bot-message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.bot-message-content ul,
+.bot-message-content ol {
+  padding-left: 1.25em;
+  margin: 0.5em 0;
+}
+
+.bot-message-content li {
+  margin-bottom: 0.25em;
+}
+
+.bot-message-content strong {
+  font-weight: 600;
+}
+
+.bot-message-content code {
+  background: rgba(0, 102, 51, 0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+}
+
+.dark .bot-message-content code {
+  background: rgba(56, 169, 110, 0.15);
+}
+
+.bot-message-content pre {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+
+.dark .bot-message-content pre {
+  background: #0f172a;
+}
+
+.bot-message-content a {
+  color: #006633;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dark .bot-message-content a {
+  color: #6ec898;
+}
+
+.bot-message-content h1,
+.bot-message-content h2,
+.bot-message-content h3 {
+  font-weight: 600;
+  margin-top: 0.75em;
+  margin-bottom: 0.25em;
 }
