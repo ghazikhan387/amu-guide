@@ -43,8 +43,8 @@ async function main() {
     });
     console.log('Raw RPC match count (threshold -1):', d1?.length, e1);
     
-    if (d1 && d1.length > 0) {
-      console.log('Top similarities:', d1.map(x => x.similarity));
+    if (d1 && Array.isArray(d1)) {
+      console.log('Top similarities:', d1.map((x: any) => x.similarity));
     }
 
   } catch (error) {
