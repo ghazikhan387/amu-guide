@@ -52,7 +52,7 @@ export default function ChatInput({ onSend, isLoading }: ChatInputProps) {
             placeholder={
               isLoading
                 ? 'AMU Assistant is thinking...'
-                : 'Ask about AMU — admissions, departments, campus life...'
+                : 'Ask about AMU...'
             }
             rows={1}
             className="w-full resize-none rounded-2xl border border-surface-200 bg-white px-4 py-3 pr-12 text-sm leading-relaxed text-surface-900 placeholder-surface-400 shadow-sm outline-none transition-all duration-200 focus:border-amu-400 focus:ring-2 focus:ring-amu-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-surface-700 dark:bg-surface-800 dark:text-white dark:placeholder-surface-500 dark:focus:border-amu-500 dark:focus:ring-amu-900 sm:text-[15px]"
@@ -105,17 +105,7 @@ export default function ChatInput({ onSend, isLoading }: ChatInputProps) {
         </button>
       </div>
 
-      <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-surface-400 dark:text-surface-500">
-        AMU Assistant can make mistakes. Verify important information at{' '}
-        <a
-          href="https://www.amu.ac.in"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amu-500 hover:underline dark:text-amu-400"
-        >
-          amu.ac.in
-        </a>
-      </p>
+     
     </div>
   );
 }
